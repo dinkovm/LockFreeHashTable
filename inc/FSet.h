@@ -5,19 +5,20 @@
 
 #include <atomic>
 #include <stdint.h>
+#include <set>
 
 using namespace std;
 
 class FSet
 {
-	int32_t* set;
+	std::set<int32_t> set;
 	bool ok;
 
 public:
 
-    FSet() = delete;
-    FSet(size_t _size, bool _ok);
-    ~FSet();
+	FSet() = delete;
+	FSet(size_t _size, bool _ok);
+	~FSet();
 
 	struct  FSetOp
 	{
@@ -27,15 +28,16 @@ public:
 			REMOVE = false
 		} type;
 
-	    int32_t key;
+		int32_t key;
 		atomic<bool> done;
 		atomic<bool> resp;
 
-        bool GetResponse();
+		bool GetResponse();
 	};
 
 	bool HasMember(int32_t _k);
 	bool Invoke(FSetOp _op);
+	std::set Freeze();
 };
 
 #endif // __FSET_H__
