@@ -1,6 +1,6 @@
 
 #pragma once
-#indef __FSET_H__
+#ifndef __FSET_H__
 #define __FSET_H__
 
 #include <atomic>
@@ -33,11 +33,16 @@ public:
 		atomic<bool> resp;
 
 		bool GetResponse();
+
+		bool FSetOp::GetResponse()
+		{
+			return response;
+		}
 	};
 
 	bool HasMember(int32_t _k);
 	bool Invoke(FSetOp _op);
-	std::set Freeze();
+	std::set<int32_t> Freeze();
 };
 
 #endif // __FSET_H__

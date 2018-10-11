@@ -3,18 +3,12 @@
 
 FSet::FSet(size_t _size, bool _ok)
 {
-	set = new int32_t[_size];
 	ok = _ok;
 }
 
 FSet::~FSet()
 {
-	delete[] set;
-}
-
-bool FSetOp::GetResponse()
-{
-	return response;
+	set.clear();
 }
 
 bool FSet::HasMember(int32_t _k)
@@ -29,7 +23,7 @@ bool FSet::Invoke(FSetOp _op)
 {
 	if (ok && !_op.done)
 	{
-		if (_op.type == INSERT)
+		if (_op.type == true)
 		{
 			_op.resp = !(HasMember(_op.key));
 			if (_op.resp)
@@ -47,7 +41,7 @@ bool FSet::Invoke(FSetOp _op)
 	return _op.done;
 }
 
-std::set FSet::Freeze()
+std::set<int32_t> FSet::Freeze()
 {
 	if (ok)
 		ok = false;
