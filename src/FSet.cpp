@@ -73,6 +73,14 @@ int32_t* FSet::Freeze()
 	return set;
 }
 
+FSet::FSetOp::FSetOp(OpType _type, int32_t _k)
+{
+	type = _type;
+	key = _k;
+	done.store(false, memory_order_relaxed);
+	resp.store(false, memory_order_relaxed);
+}
+
 bool FSet::FSetOp::GetResponse()
 {
 	return resp;

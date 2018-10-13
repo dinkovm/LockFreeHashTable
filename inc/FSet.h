@@ -34,6 +34,8 @@ public:
 		atomic<bool> done;
 		atomic<bool> resp;
 
+		FSetOp() = delete;
+		FSetOp(OpType _type, int32_t _k);
 		bool GetResponse();
 	};
 
