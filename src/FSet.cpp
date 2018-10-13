@@ -1,6 +1,13 @@
 
 #include "FSet.h"
 
+FSet::Window::Window(FSet::Node* _pred, FSet::Node* _curr)
+{
+	pred = _pred;
+	curr = _curr;
+}
+
+
 FSet::Set::Set()
 {
 	values = new int32_t[size];

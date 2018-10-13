@@ -4,7 +4,7 @@
 #define __FSET_H__
 
 #include <atomic>
-#include <stdint.h>s
+#include <stdint.h>
 
 using namespace std;
 
@@ -12,9 +12,21 @@ class FSet
 {
 
 public:
+	
+	struct Node {
+		int32_t value;
+		FSet::Node* next;
+	};
+
+	struct Window {
+		FSet::Node* pred;
+		FSet::Node* curr;
+
+		Window(FSet::Node* _pred, FSet::Node* _curr);
+	};
 
 	struct Set {
-		int32_t* values;
+		FSet::Node* values;
 		int32_t size = 1000;
 
 		Set();
