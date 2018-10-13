@@ -23,47 +23,47 @@ bool FSet::HasMember(int32_t _k)
 	return false;
 }
 
-bool FSet::Invoke(FSetOp _op)
+bool FSet::Invoke(FSetOp* _op)
 {
-	if (ok && !_op.done)
+	if (ok && !_op->done)
 	{
-		if (_op.type == true)
+		if (_op->type == true)
 		{
-			_op.resp = !(HasMember(_op.key));
-			if (_op.resp)
+			_op->resp = !(HasMember(_op->key));
+			if (_op->resp)
 			{
 				for (int i = 0; i < tail; i++)
 				{
 					if (set[i] == -1)
 					{
-						set[i] = _op.key;
-						_op.done = true;
+						set[i] = _op->key;
+						_op->done = true;
 					}
 				}
-				if (!_op.done)
+				if (!_op->done)
 				{
-					set[tail] = _op.key;
+					set[tail] = _op->key;
 					tail++;
 				}
 			}
 		}
 		else
 		{
-			_op.resp = (HasMember(_op.key));
-			if (_op.resp)
+			_op->resp = (HasMember(_op->key));
+			if (_op->resp)
 			{
 				for (int i = 0; i < tail; i++)
 				{
-					if (set[i] == _op.key)
+					if (set[i] == _op->key)
 						set[i] = -1;
 				}
 			}
 				
 		}
-		_op.done = true;
+		_op->done = true;
 	}
 
-	return _op.done;
+	return _op->done;
 }
 
 int32_t* FSet::Freeze()

@@ -40,7 +40,7 @@ public:
 	};
 
 	bool HasMember(int32_t _k);
-	bool Invoke(FSetOp _op);
+	bool Invoke(FSetOp* _op);
 	int32_t* Freeze();
 };
 
