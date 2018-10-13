@@ -19,7 +19,7 @@ namespace LockFree
 	{
 		HNode* head = new HNode(1);
 		head->buckets[0].store(
-			new FSet(0u, true), // TODO: FSet takes in a set!
+			new FSet(nullptr, true),
 			memory_order_relaxed);
 
 		m_head.store(head, memory_order_release);

@@ -6,31 +6,13 @@
 #include <atomic>
 #include <stdint.h>
 
+#include "Set.h"
+
 using namespace std;
 
 class FSet
 {
-
 public:
-	
-	struct Node {
-		int32_t value;
-		FSet::Node* next;
-	};
-
-	struct Window {
-		FSet::Node* pred;
-		FSet::Node* curr;
-
-		Window(FSet::Node* _pred, FSet::Node* _curr);
-	};
-
-	struct Set {
-		FSet::Node* values;
-		int32_t size = 1000;
-
-		Set();
-	};
 
 	struct  FSetOp
 	{
@@ -50,12 +32,12 @@ public:
 	};
 
 	FSet() = delete;
-	FSet(FSet::Set* _set, bool _ok);
+	FSet(Set* _set, bool _ok);
 	~FSet();
 
 	bool HasMember(int32_t _k);
 	bool Invoke(FSetOp* _op);
-	FSet::Set* Freeze();
+	Set* Freeze();
 
 private:
 
