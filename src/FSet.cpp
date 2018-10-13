@@ -1,22 +1,26 @@
 
 #include "FSet.h"
 
-FSet::FSet(size_t _size, bool _ok)
+FSet::FSet(bool _ok)
 {
+	set = new int32_t[size];
+	memset(set, 0, size*sizeof(int32_t));
 	ok = _ok;
 }
 
 FSet::~FSet()
 {
-	set.clear();
+	delete set;
 }
 
 bool FSet::HasMember(int32_t _k)
 {
-	if (set.find(_k) != set.end())
-		return true;
-	else
-		return false;
+	for (int i = 0; i < tail; i++)
+	{
+		if (set[i] == _k)
+			return true;
+	}
+	return false;
 }
 
 bool FSet::Invoke(FSetOp _op)
@@ -27,13 +31,34 @@ bool FSet::Invoke(FSetOp _op)
 		{
 			_op.resp = !(HasMember(_op.key));
 			if (_op.resp)
-				set.insert(_op.key);
+			{
+				for (int i = 0; i < tail; i++)
+				{
+					if (set[i] == -1)
+					{
+						set[i] = _op.key;
+						_op.done = true;
+					}
+				}
+				if (!_op.done)
+				{
+					set[tail] = _op.key;
+					tail++;
+				}
+			}
 		}
 		else
 		{
 			_op.resp = (HasMember(_op.key));
 			if (_op.resp)
-				set.erase(_op.key);
+			{
+				for (int i = 0; i < tail; i++)
+				{
+					if (set[i] == _op.key)
+						set[i] = -1;
+				}
+			}
+				
 		}
 		_op.done = true;
 	}
@@ -41,7 +66,7 @@ bool FSet::Invoke(FSetOp _op)
 	return _op.done;
 }
 
-std::set<int32_t> FSet::Freeze()
+int32_t* FSet::Freeze()
 {
 	if (ok)
 		ok = false;

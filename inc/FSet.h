@@ -11,13 +11,15 @@ using namespace std;
 
 class FSet
 {
-	std::set<int32_t> set;
+	int32_t* set;
 	bool ok;
+	atomic<int32_t> tail;
+	int32_t size = 1000;
 
 public:
 
 	FSet() = delete;
-	FSet(size_t _size, bool _ok);
+	FSet(bool _ok);
 	~FSet();
 
 	struct  FSetOp
@@ -42,7 +44,7 @@ public:
 
 	bool HasMember(int32_t _k);
 	bool Invoke(FSetOp _op);
-	std::set<int32_t> Freeze();
+	int32_t* Freeze();
 };
 
 #endif // __FSET_H__
