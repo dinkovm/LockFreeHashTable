@@ -4,23 +4,21 @@
 #define __FSET_H__
 
 #include <atomic>
-#include <stdint.h>
-#include <set>
+#include <stdint.h>s
 
 using namespace std;
 
 class FSet
 {
-	int32_t* set;
-	bool ok;
-	atomic<int32_t> tail;
-	int32_t size = 1000;
 
 public:
 
-	FSet() = delete;
-	FSet(bool _ok);
-	~FSet();
+	struct Set {
+		int32_t* values;
+		int32_t size = 1000;
+
+		Set();
+	};
 
 	struct  FSetOp
 	{
@@ -39,9 +37,18 @@ public:
 		bool GetResponse();
 	};
 
+	FSet() = delete;
+	FSet(FSet::Set* _set, bool _ok);
+	~FSet();
+
 	bool HasMember(int32_t _k);
 	bool Invoke(FSetOp* _op);
-	int32_t* Freeze();
+	FSet::Set* Freeze();
+
+private:
+
+	Set* set;
+	bool ok;
 };
 
 #endif // __FSET_H__

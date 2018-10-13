@@ -1,10 +1,15 @@
 
 #include "FSet.h"
 
-FSet::FSet(bool _ok)
+FSet::Set::Set()
 {
-	set = new int32_t[size];
-	memset(set, 0, size*sizeof(int32_t));
+	values = new int32_t[size];
+	memset(values, -1, size * sizeof(int32_t));
+}
+
+FSet::FSet(FSet::Set* _set, bool _ok)
+{
+	set = _set;
 	ok = _ok;
 }
 
@@ -15,9 +20,9 @@ FSet::~FSet()
 
 bool FSet::HasMember(int32_t _k)
 {
-	for (int i = 0; i < tail; i++)
+	for (int i = 0; i < set->size; i++)
 	{
-		if (set[i] == _k)
+		if (set->values[i] == _k)
 			return true;
 	}
 	return false;
@@ -32,18 +37,12 @@ bool FSet::Invoke(FSetOp* _op)
 			_op->resp = !(HasMember(_op->key));
 			if (_op->resp)
 			{
-				for (int i = 0; i < tail; i++)
+				for (int i = 0; i < set->size; i++)
 				{
-					if (set[i] == -1)
+					if (set->values[i] == -1)
 					{
-						set[i] = _op->key;
-						_op->done = true;
+						set->values[i] = _op->key;
 					}
-				}
-				if (!_op->done)
-				{
-					set[tail] = _op->key;
-					tail++;
 				}
 			}
 		}
@@ -52,10 +51,10 @@ bool FSet::Invoke(FSetOp* _op)
 			_op->resp = (HasMember(_op->key));
 			if (_op->resp)
 			{
-				for (int i = 0; i < tail; i++)
+				for (int i = 0; i < set->size; i++)
 				{
-					if (set[i] == _op->key)
-						set[i] = -1;
+					if (set->values[i] == _op->key)
+						set->values[i] = -1;
 				}
 			}
 				
@@ -66,7 +65,7 @@ bool FSet::Invoke(FSetOp* _op)
 	return _op->done;
 }
 
-int32_t* FSet::Freeze()
+FSet::Set* FSet::Freeze()
 {
 	if (ok)
 		ok = false;
