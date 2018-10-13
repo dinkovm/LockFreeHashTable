@@ -1,8 +1,13 @@
 cmake_minimum_required (VERSION 2.6)
-project (LockFreeHashTable)
+set (PNAME LockFreeHashTable)
+project (${PNAME})
+
+FILE(GLOB_RECURSE HEADERS "inc/*.h")
+file(GLOB SOURCES "src/*.cpp")
 
 include_directories(inc)
 
-file(GLOB SOURCES "src/*.cpp")
-
-add_executable(LockFreeHashTable ${SOURCES})
+ADD_LIBRARY(
+    ${PNAME} STATIC
+    ${HEADERS} ${SOURCES}
+)
