@@ -21,7 +21,6 @@ namespace LockFree
 		};
 
 		HashTable();
-		~HashTable();
 
 		bool Insert(int32_t _k);
 		bool Remove(int32_t _k);
@@ -36,7 +35,6 @@ namespace LockFree
 		void Resize(bool _grow);
 		bool Apply(OpType _type, int32_t _k);
 		FSet* InitBucket(HNode* _t, size_t _i);
-
 	};
 }
 

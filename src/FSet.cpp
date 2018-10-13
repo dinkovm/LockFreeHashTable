@@ -1,20 +1,7 @@
 
 #include "FSet.h"
 
-FSet::Window::Window(FSet::Node* _pred, FSet::Node* _curr)
-{
-	pred = _pred;
-	curr = _curr;
-}
-
-
-FSet::Set::Set()
-{
-	values = new int32_t[size];
-	memset(values, -1, size * sizeof(int32_t));
-}
-
-FSet::FSet(FSet::Set* _set, bool _ok)
+FSet::FSet(Set* _set, bool _ok)
 {
 	set = _set;
 	ok = _ok;
@@ -27,44 +14,28 @@ FSet::~FSet()
 
 bool FSet::HasMember(int32_t _k)
 {
-	for (int i = 0; i < set->size; i++)
-	{
-		if (set->values[i] == _k)
-			return true;
-	}
-	return false;
+	return set->Contains(_k);
 }
 
 bool FSet::Invoke(FSetOp* _op)
 {
 	if (ok && !_op->done)
 	{
-		if (_op->type == true)
+		if (_op->type == FSetOp::INSERT)
 		{
 			_op->resp = !(HasMember(_op->key));
 			if (_op->resp)
 			{
-				for (int i = 0; i < set->size; i++)
-				{
-					if (set->values[i] == -1)
-					{
-						set->values[i] = _op->key;
-					}
-				}
+				set->Insert(_op->key);
 			}
 		}
-		else
+		else // FSetOp::REMOVE
 		{
 			_op->resp = (HasMember(_op->key));
 			if (_op->resp)
 			{
-				for (int i = 0; i < set->size; i++)
-				{
-					if (set->values[i] == _op->key)
-						set->values[i] = -1;
-				}
+				set->Remove(_op->key);
 			}
-				
 		}
 		_op->done = true;
 	}
@@ -72,7 +43,7 @@ bool FSet::Invoke(FSetOp* _op)
 	return _op->done;
 }
 
-FSet::Set* FSet::Freeze()
+Set* FSet::Freeze()
 {
 	if (ok)
 		ok = false;

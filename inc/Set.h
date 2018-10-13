@@ -29,6 +29,7 @@ private:
 		Node* pred;
 		Node* curr;
 
+		Window() = delete;
 		Window(Node* _pred, Node* _curr);
 	};
 
