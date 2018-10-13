@@ -72,3 +72,8 @@ int32_t* FSet::Freeze()
 		ok = false;
 	return set;
 }
+
+bool FSet::FSetOp::GetResponse()
+{
+	return resp;
+}

@@ -35,11 +35,6 @@ public:
 		atomic<bool> resp;
 
 		bool GetResponse();
-
-		bool FSetOp::GetResponse()
-		{
-			return response;
-		}
 	};
 
 	bool HasMember(int32_t _k);
