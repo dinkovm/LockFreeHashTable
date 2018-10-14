@@ -97,7 +97,7 @@ namespace LockFree
 			HNode* t = m_head.load(memory_order_acquire);
 			FSet* b  = t->buckets[_k % t->size];
 
-			if (b = nullptr)
+			if (b == nullptr)
 			{
 				b = InitBucket(t, _k % t->size);
 			}
@@ -117,6 +117,8 @@ namespace LockFree
 		if ((b == nullptr) &&
 			(s != nullptr))
 		{
+			Set* set_new = nullptr;
+
 			if (_t->size == s->size * 2)
 			{
 				FSet* m = s->buckets[_i % s->size];
@@ -126,10 +128,11 @@ namespace LockFree
 			{
 				FSet* m = s->buckets[_i];
 				FSet* n = s->buckets[_i + _t->size];
-				// TODO: call freeze here
+				
+				set_new = m->Freeze()->Union(n->Freeze());
 			}
 
-			FSet* b_new = new FSet(true);
+			FSet* b_new = new FSet(set_new, true);
 			FSet* b_curr = nullptr;
 			_t->buckets[_i].compare_exchange_strong(
 				b_curr, 

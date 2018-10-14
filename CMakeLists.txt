@@ -7,7 +7,7 @@ file(GLOB SOURCES "src/*.cpp")
 
 include_directories(inc)
 
-ADD_LIBRARY(
-    ${PNAME} STATIC
+add_executable(
+    ${PNAME}
     ${HEADERS} ${SOURCES}
 )

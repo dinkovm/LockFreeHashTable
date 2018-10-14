@@ -20,6 +20,8 @@ public:
 
 	bool Contains(uint32_t _k);
 
+	Set* Union(Set* _rhs);
+
 private:
 
 	struct Node {
@@ -43,7 +45,8 @@ private:
 		Window(Node* _pred, Node* _curr);
 	};
 
-	Window Find(Node*   head, int32_t _k);
+	void Insert(Set* _subset);
+	Window Find(Node* _head, int32_t _k);
 
 	atomic<Node*> m_head;
 };

@@ -3,6 +3,11 @@
 
 FSet::FSet(Set* _set, bool _ok)
 {
+	if (_set == nullptr)
+	{
+		_set = new Set();
+	}
+
 	set = _set;
 	ok = _ok;
 }

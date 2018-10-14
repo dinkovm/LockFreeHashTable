@@ -31,6 +31,19 @@ Set::Window::Window(Node* _pred, Node* _curr)
 
 Set::Set()
 {
+	Node* terminal = new Node();
+	terminal->key = INT32_MAX;
+	terminal->next.store(
+		Node::MakeAddr(nullptr, false), 
+		memory_order_relaxed);
+
+	Node* head = new Node();
+	head->key = INT32_MIN;
+	head->next.store(
+		Node::MakeAddr(terminal, false),
+		memory_order_relaxed);
+
+	m_head.store(head, memory_order_relaxed);
 }
 
 bool Set::Insert(uint32_t _k)
@@ -152,5 +165,38 @@ retry:
 			curr = succ;
 		}
 	}
+}
+
+void Set::Insert(Set* _subset)
+{
+	uintptr_t addr = 0u;
+	Node* curr = _subset->m_head.load(memory_order_acquire);
+	bool marked = false;
+
+	while (true)
+	{
+		addr = curr->next.load(memory_order_acquire);
+		curr = Node::GetNextNode(addr);
+		marked = Node::GetMarked(addr);
+
+		if (curr->key == INT32_MAX)
+		{
+			break;
+		}
+
+		if (!marked)
+		{
+			Insert(curr->key);
+		}
+	}
+}
+
+Set* Set::Union(Set* _rhs)
+{
+	Set* unionSet = new Set();
 	
+	unionSet->Insert(_rhs);
+	unionSet->Insert(this);
+
+	return unionSet;
 }
