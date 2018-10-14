@@ -14,15 +14,25 @@ public:
 
 	Set();
 
-	bool Insert(uint32_t);
-	bool Remove(uint32_t);
-	bool Contains(uint32_t);
+	bool Insert(uint32_t _k);
+
+	bool Remove(uint32_t _k);
+
+	bool Contains(uint32_t _k);
 
 private:
 
 	struct Node {
-		int32_t value;
-		Node* next;
+		int32_t key;
+		atomic<uintptr_t> next;
+
+		static inline Node* GetNextNode(
+			uintptr_t _addr);
+		static inline bool GetMarked(
+			uintptr_t _addr);
+		static inline uintptr_t MakeAddr(
+			Node* _next, 
+			bool  _marked);
 	};
 
 	struct Window {
@@ -33,7 +43,7 @@ private:
 		Window(Node* _pred, Node* _curr);
 	};
 
-	Window Find(Node* head, int32_t _k);
+	Window Find(Node*   head, int32_t _k);
 
 	atomic<Node*> m_head;
 };
