@@ -17,7 +17,7 @@ namespace LockFree
 			size_t size;
 			atomic<HNode*> pred;
 
-			HNode(size_t _size);
+			HNode(size_t _size, HNode* _pred);
 		};
 
 		HashTable();

@@ -46,7 +46,7 @@ Set::Set()
 	m_head.store(head, memory_order_relaxed);
 }
 
-bool Set::Insert(uint32_t _k)
+bool Set::Insert(int32_t _k)
 {
 	while (true)
 	{
@@ -61,6 +61,7 @@ bool Set::Insert(uint32_t _k)
 		{
 			Node* node = new Node();
 			node->next = Node::MakeAddr(window.curr, false);
+			node->key = _k;
 
 			uintptr_t expected = Node::MakeAddr(window.curr, false);
 			uintptr_t desired = Node::MakeAddr(node, false);
@@ -73,7 +74,7 @@ bool Set::Insert(uint32_t _k)
 	}
 }
 
-bool Set::Remove(uint32_t _k)
+bool Set::Remove(int32_t _k)
 {
 	while (true)
 	{
@@ -105,7 +106,7 @@ bool Set::Remove(uint32_t _k)
 	}
 }
 
-bool Set::Contains(uint32_t _k)
+bool Set::Contains(int32_t _k)
 {
 	bool marked = false;
 	Node* curr = m_head.load(memory_order_acquire);
@@ -199,4 +200,26 @@ Set* Set::Union(Set* _rhs)
 	unionSet->Insert(this);
 
 	return unionSet;
+}
+
+Set* Set::IntersectRemainder(
+	int32_t _dividend, 
+	int32_t _remainder)
+{
+	Set* intersection = new Set();
+
+	Node* curr = m_head.load(memory_order_acquire);
+	curr = curr->GetNextNode(curr->next.load(memory_order_acquire));
+
+	while (curr->key != INT32_MAX)
+	{
+		if ((curr->key % _dividend) == _remainder)
+		{
+			intersection->Insert(curr->key);
+		}
+
+		curr = curr->GetNextNode(curr->next.load(memory_order_acquire));
+	}
+
+	return intersection;
 }

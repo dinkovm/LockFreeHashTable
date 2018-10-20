@@ -3,21 +3,21 @@
 
 namespace LockFree
 {
-	HashTable::HNode::HNode(size_t _size)
+	HashTable::HNode::HNode(size_t _size, HNode* _pred)
 	{
 		size = _size;
 		buckets = new atomic<FSet*>[_size];
-		pred = nullptr;
+		pred = _pred;
 
 		for (size_t i = 0u; i < _size; i++)
 		{
-			buckets->store(nullptr, memory_order_relaxed);
+			buckets[i].store(nullptr, memory_order_relaxed);
 		}
 	}
 
 	HashTable::HashTable()
 	{
-		HNode* head = new HNode(1);
+		HNode* head = new HNode(1, nullptr);
 		head->buckets[0].store(
 			new FSet(nullptr, true),
 			memory_order_relaxed);
@@ -43,7 +43,7 @@ namespace LockFree
 
 		// if ()
 		{
-			Resize(true);
+			//Resize(false);
 		}
 
 		return response;
@@ -59,7 +59,7 @@ namespace LockFree
 			HNode* s = t->pred;
 
 			b = (s != nullptr) ? 
-				s->buckets[_k % t->size] : 
+				s->buckets[_k % s->size] : 
 				t->buckets[_k % t->size];
 		}
 
@@ -80,7 +80,7 @@ namespace LockFree
 			t->pred = nullptr;
 
 			size_t size = _grow ? t->size * 2 : t->size / 2;
-			HNode* head = new HNode(size);
+			HNode* head = new HNode(size, t);
 			m_head.compare_exchange_strong(
 				t, 
 				head, 
@@ -122,7 +122,8 @@ namespace LockFree
 			if (_t->size == s->size * 2)
 			{
 				FSet* m = s->buckets[_i % s->size];
-				// TODO: call freeze here
+				
+				set_new = m->Freeze()->IntersectRemainder(_t->size, _i);
 			}
 			else
 			{

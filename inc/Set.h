@@ -14,13 +14,17 @@ public:
 
 	Set();
 
-	bool Insert(uint32_t _k);
+	bool Insert(int32_t _k);
 
-	bool Remove(uint32_t _k);
+	bool Remove(int32_t _k);
 
-	bool Contains(uint32_t _k);
+	bool Contains(int32_t _k);
 
 	Set* Union(Set* _rhs);
+
+	Set* IntersectRemainder(
+		int32_t _dividend, 
+		int32_t _remainder);
 
 private:
 
