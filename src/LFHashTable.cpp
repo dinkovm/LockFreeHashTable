@@ -76,6 +76,14 @@ namespace LockFree
 		if (((t->size > 1u) || _grow) && 
 			((t->size < m_maxBins || !_grow)))
 		{
+			bool expected = true;
+			bool desired = false;
+
+			if (!(_grow ? m_grow : m_shrink).compare_exchange_strong(expected, desired, memory_order_relaxed))
+			{
+				return;
+			}
+
 			for (size_t i = 0; i < t->size; i++)
 			{
 				InitBucket(t, i);
@@ -89,18 +97,6 @@ namespace LockFree
 				t, 
 				head, 
 				memory_order_release);
-
-			bool expected = true;
-			bool desired = false;
-
-			if (_grow)
-			{
-				m_grow.compare_exchange_strong(expected, desired, memory_order_relaxed);
-			}
-			else
-			{
-				m_shrink.compare_exchange_strong(expected, desired, memory_order_relaxed);
-			}
 		}
 	}
 

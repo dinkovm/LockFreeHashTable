@@ -9,6 +9,14 @@
 #include <thread>
 #include <atomic>
 
+#include <assert.h>
+
+#if _WIN32
+#include <Windows.h>
+
+SYNCHRONIZATION_BARRIER barrier;
+#endif
+
 using namespace LockFree;
 using namespace std;
 
@@ -27,14 +35,64 @@ struct Operation
 
 #define DEFAULT_NUM_OPS 500000
 vector<Operation> operations(DEFAULT_NUM_OPS);
-atomic<uint32_t> currOp;
+atomic<uint32_t> current;
 
-#define NUM_THREADS 2
-thread* threads[2];
+HashTable ht(4u, 16u, 32u);
+
+chrono::time_point<std::chrono::system_clock> startTime;
+
+void RunThread(bool mainThread)
+{
+	uint32_t index = 0u;
+	uint32_t numOps = static_cast<uint32_t>(operations.size());
+
+#if _WIN32
+	EnterSynchronizationBarrier(&barrier, SYNCHRONIZATION_BARRIER_FLAGS_NO_DELETE);
+#endif
+
+	if (mainThread)
+	{
+		// Start timer and release barrier
+		startTime = chrono::system_clock::now();
+	}
+
+	while (true)
+	{
+		index = current.fetch_add(1u);
+
+		if (index >= numOps)
+		{
+			break;
+		}
+
+		Operation& op = operations[index];
+
+		switch (op.opType)
+		{
+		case INSERT:
+			ht.Insert(op.key);
+			break;
+		case REMOVE:
+			ht.Remove(op.key);
+			break;
+		case CONTAINS:
+			ht.Contains(op.key);
+			break;
+		default:
+			assert(false);
+			break;
+		}
+	}
+}
 
 int main(int argc, char *argv[])
 {
-	HashTable ht(4u, 16u, 32u);
+	if (argc != 3)
+	{
+		cout << "Invalid number of arguments!\n";
+		cout << "Usage: LockFreeHashTable.exe \"Test Data\" \"Number of Threads\"" << endl;
+		exit(1);
+	}
 
 	ifstream file;
 	char* command = new char[256];
@@ -74,47 +132,50 @@ int main(int argc, char *argv[])
 		operations.push_back(op);
 	}
 
-	chrono::time_point<std::chrono::system_clock> time = chrono::system_clock::now();
-
-#if 0 // Single-Threaded
-
-	for (auto op : operations)
+	const uint32_t NUM_WORKER_THREADS = static_cast<uint32_t>(atoi(argv[2])) - 1;
+	thread** threads;
+	if (NUM_WORKER_THREADS > 0)
 	{
-		switch (op.opType)
-		{
-		case INSERT:
-			ht.Insert(op.key);
-			break;
-		case REMOVE:
-			ht.Remove(op.key);
-			break;
-		case CONTAINS:
-			ht.Contains(op.key);
-			break;
-		}
+		threads = new thread*[NUM_WORKER_THREADS];
 	}
 
-#else // Multi-Threaded
-
-	// Spawn Threads
-	for (size_t i = 0; i < NUM_THREADS; i++)
-	{
-		threads[i] = new thread()
-	}
+#ifdef _WIN32
+	InitializeSynchronizationBarrier(&barrier, NUM_WORKER_THREADS + 1, -1);
 #endif
 
+	current.store(0u);
+
+	// Spawn Worker Threads
+	for (size_t i = 0; i < NUM_WORKER_THREADS; i++)
+	{
+		threads[i] = new thread(RunThread, false);
+	}
+
+	// Use Main Thread as a Worker Thread
+	RunThread(true);
+
+	// Join Worker Threads
+	for (size_t i = 0; i < NUM_WORKER_THREADS; i++)
+	{
+		threads[i]->join();
+	}
+
 	std::cout << "Elapsed Time: " <<
-		chrono::duration_cast<std::chrono::milliseconds>(chrono::system_clock::now() - time).count() << endl;
+		chrono::duration_cast<std::chrono::milliseconds>(chrono::system_clock::now() - startTime).count() << endl;
+
+	// Delete Worker Threads
+	for (size_t i = 0; i < NUM_WORKER_THREADS; i++)
+	{
+		delete threads[i];
+	}
 	
 	file.close();
 	delete[] command;
+	
+	if (NUM_WORKER_THREADS > 0)
+	{
+		delete[] threads;
+	}
 
 	return 0;
-}
-
-void RunThread()
-{
-	uint32_t curr;
-
-	while ()
 }
