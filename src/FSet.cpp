@@ -10,6 +10,8 @@ FSet::FSet(Set* _set, bool _ok)
 
 	set = _set;
 	ok = _ok;
+
+	size.store(0, memory_order_relaxed);
 }
 
 FSet::~FSet()
@@ -24,24 +26,27 @@ bool FSet::HasMember(int32_t _k)
 
 bool FSet::Invoke(FSetOp* _op)
 {
+	bool resp = false;
+
 	if (ok && !_op->done)
 	{
 		if (_op->type == FSetOp::INSERT)
 		{
-			_op->resp = !(HasMember(_op->key));
-			if (_op->resp)
+			if (set->Insert(_op->key))
 			{
-				set->Insert(_op->key);
+				resp = true;
+				size.fetch_add(1);
 			}
 		}
 		else // FSetOp::REMOVE
 		{
-			_op->resp = (HasMember(_op->key));
-			if (_op->resp)
+			if (set->Remove(_op->key))
 			{
-				set->Remove(_op->key);
+				resp = true;
+				size.fetch_sub(1);
 			}
 		}
+		_op->resp = resp;
 		_op->done = true;
 	}
 
@@ -66,4 +71,9 @@ FSet::FSetOp::FSetOp(OpType _type, int32_t _k)
 bool FSet::FSetOp::GetResponse()
 {
 	return resp;
+}
+
+int32_t FSet::GetSize()
+{
+	return size;
 }

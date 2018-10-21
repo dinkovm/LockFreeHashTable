@@ -20,7 +20,7 @@ namespace LockFree
 			HNode(size_t _size, HNode* _pred);
 		};
 
-		HashTable();
+		HashTable(uint32_t _lowerThresh, uint32_t _upperThresh, size_t _maxBins);
 
 		bool Insert(int32_t _k);
 		bool Remove(int32_t _k);
@@ -35,6 +35,13 @@ namespace LockFree
 		void Resize(bool _grow);
 		bool Apply(OpType _type, int32_t _k);
 		FSet* InitBucket(HNode* _t, size_t _i);
+
+		const int32_t m_lowerThresh;
+		const int32_t m_upperThresh;
+		const size_t m_maxBins;
+
+		atomic<bool> m_grow;
+		atomic<bool> m_shrink;
 	};
 }
 

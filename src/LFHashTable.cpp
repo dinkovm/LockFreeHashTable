@@ -15,7 +15,10 @@ namespace LockFree
 		}
 	}
 
-	HashTable::HashTable()
+	HashTable::HashTable(uint32_t _lowerThresh, uint32_t _upperThresh, size_t _maxBins) :
+		m_lowerThresh(static_cast<int32_t>(_lowerThresh)),
+		m_upperThresh(static_cast<int32_t>(_upperThresh)),
+		m_maxBins(_maxBins)
 	{
 		HNode* head = new HNode(1, nullptr);
 		head->buckets[0].store(
@@ -29,7 +32,7 @@ namespace LockFree
 	{
 		bool response = Apply(OpType::INSERT, _k);
 
-		// if ()
+		if (m_grow.load(memory_order_relaxed))
 		{
 			Resize(true);
 		}
@@ -41,9 +44,9 @@ namespace LockFree
 	{
 		bool response = Apply(OpType::REMOVE, _k);
 
-		// if ()
+		if (m_shrink.load(memory_order_relaxed))
 		{
-			//Resize(false);
+			Resize(false);
 		}
 
 		return response;
@@ -70,7 +73,8 @@ namespace LockFree
 	{
 		HNode* t = m_head.load(memory_order_acquire);
 
-		if ((t->size > 1u) || _grow)
+		if (((t->size > 1u) || _grow) && 
+			((t->size < m_maxBins || !_grow)))
 		{
 			for (size_t i = 0; i < t->size; i++)
 			{
@@ -85,6 +89,18 @@ namespace LockFree
 				t, 
 				head, 
 				memory_order_release);
+
+			bool expected = true;
+			bool desired = false;
+
+			if (_grow)
+			{
+				m_grow.compare_exchange_strong(expected, desired, memory_order_relaxed);
+			}
+			else
+			{
+				m_shrink.compare_exchange_strong(expected, desired, memory_order_relaxed);
+			}
 		}
 	}
 
@@ -104,6 +120,23 @@ namespace LockFree
 			
 			if (b->Invoke(&op))
 			{
+				int32_t size = b->GetSize();
+
+				if (size > m_upperThresh)
+				{
+					bool expected = false;
+					bool desired = true;
+
+					m_grow.compare_exchange_strong(expected, desired, memory_order_relaxed);
+				}
+				else if(size < m_lowerThresh)
+				{
+					bool expected = false;
+					bool desired = true;
+
+					m_shrink.compare_exchange_strong(expected, desired, memory_order_relaxed);
+				}
+
 				return op.GetResponse();
 			}
 		}
@@ -123,7 +156,8 @@ namespace LockFree
 			{
 				FSet* m = s->buckets[_i % s->size];
 				
-				set_new = m->Freeze()->IntersectRemainder(_t->size, _i);
+				set_new = m->Freeze()->IntersectRemainder(
+					static_cast<int32_t>(_t->size), _i);
 			}
 			else
 			{

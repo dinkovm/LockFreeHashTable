@@ -38,11 +38,14 @@ public:
 	bool HasMember(int32_t _k);
 	bool Invoke(FSetOp* _op);
 	Set* Freeze();
+	int32_t GetSize();
 
 private:
 
 	Set* set;
 	bool ok;
+
+	atomic<int32_t> size;
 };
 
 #endif // __FSET_H__
