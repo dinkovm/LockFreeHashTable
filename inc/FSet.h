@@ -43,8 +43,8 @@ public:
 private:
 
 	Set* set;
-	bool ok;
 
+	atomic<bool> ok;
 	atomic<int32_t> size;
 };
 
