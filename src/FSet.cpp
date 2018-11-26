@@ -35,7 +35,7 @@ bool FSet::Invoke(FSetOp* _op)
 			if (set->Insert(_op->key))
 			{
 				resp = true;
-				size.fetch_add(1);
+				//size.fetch_add(1);
 			}
 		}
 		else // FSetOp::REMOVE
@@ -43,7 +43,7 @@ bool FSet::Invoke(FSetOp* _op)
 			if (set->Remove(_op->key))
 			{
 				resp = true;
-				size.fetch_sub(1);
+				//size.fetch_sub(1);
 			}
 		}
 		_op->resp = resp;
