@@ -104,7 +104,7 @@ namespace LockFree
 				{
 					uint32_t size = m_size++;
 
-					if (m_size > (t->size * 256))
+					if (m_size > (t->size * 64))
 					{
 						bool expected = false;
 						bool desired = true;
