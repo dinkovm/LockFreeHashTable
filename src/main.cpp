@@ -126,8 +126,7 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			cout << "Invalid operation type: " << command << "!" << endl;
-			exit(1);
+			continue;
 		}
 
 		operations.push_back(op);

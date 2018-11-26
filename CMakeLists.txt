@@ -13,3 +13,11 @@ add_executable(
     ${PNAME}
     ${HEADERS} ${SOURCES}
 )
+
+if (UNIX)
+    find_library(SUPERMALLOC_LIBRARY supermalloc lib)
+    target_link_libraries(
+        ${PNAME}
+        ${SUPERMALLOC_LIBRARY}
+    )
+endif (UNIX)
