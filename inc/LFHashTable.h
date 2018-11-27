@@ -40,8 +40,8 @@ namespace LockFree
 		const int32_t m_upperThresh;
 		const size_t m_maxBins;
 
-		atomic<bool> m_grow;
-		atomic<bool> m_shrink;
+		uint32_t m_size;
+		atomic<bool> m_resizing;
 	};
 }
 

@@ -18,7 +18,8 @@ namespace LockFree
 	HashTable::HashTable(uint32_t _lowerThresh, uint32_t _upperThresh, size_t _maxBins) :
 		m_lowerThresh(static_cast<int32_t>(_lowerThresh)),
 		m_upperThresh(static_cast<int32_t>(_upperThresh)),
-		m_maxBins(_maxBins)
+		m_maxBins(_maxBins),
+		m_size(0u)
 	{
 		HNode* head = new HNode(1, nullptr);
 		head->buckets[0].store(
@@ -32,22 +33,12 @@ namespace LockFree
 	{
 		bool response = Apply(OpType::INSERT, _k);
 
-		if (m_grow.load(memory_order_relaxed))
-		{
-			Resize(true);
-		}
-
 		return response;
 	}
 
 	bool HashTable::Remove(int32_t _k)
 	{
 		bool response = Apply(OpType::REMOVE, _k);
-
-		if (m_shrink.load(memory_order_relaxed))
-		{
-			Resize(false);
-		}
 
 		return response;
 	}
@@ -73,17 +64,8 @@ namespace LockFree
 	{
 		HNode* t = m_head.load(memory_order_acquire);
 
-		if (((t->size > 1u) || _grow) && 
-			((t->size < m_maxBins || !_grow)))
+		if ((t->size > 1u) || _grow)
 		{
-			bool expected = true;
-			bool desired = false;
-
-			if (!(_grow ? m_grow : m_shrink).compare_exchange_strong(expected, desired, memory_order_relaxed))
-			{
-				return;
-			}
-
 			for (size_t i = 0; i < t->size; i++)
 			{
 				InitBucket(t, i);
@@ -98,6 +80,8 @@ namespace LockFree
 				head, 
 				memory_order_release);
 		}
+
+		m_resizing = false;
 	}
 
 	bool HashTable::Apply(OpType _type, int32_t _k)
@@ -116,21 +100,35 @@ namespace LockFree
 			
 			if (b->Invoke(&op))
 			{
-				int32_t size = b->GetSize();
-
-				if (size > m_upperThresh)
+				if (_type == OpType::INSERT)
 				{
-					bool expected = false;
-					bool desired = true;
+					uint32_t size = m_size++;
 
-					m_grow.compare_exchange_strong(expected, desired, memory_order_relaxed);
+					if (m_size > (t->size * 64))
+					{
+						bool expected = false;
+						bool desired = true;
+
+						if (m_resizing.compare_exchange_strong(expected, desired))
+						{
+							Resize(true);
+						}
+					}
 				}
-				else if(size < m_lowerThresh)
+				else if (_type == OpType::REMOVE)
 				{
-					bool expected = false;
-					bool desired = true;
+					uint32_t size = m_size--;
 
-					m_shrink.compare_exchange_strong(expected, desired, memory_order_relaxed);
+					if (size < t->size)
+					{
+						bool expected = false;
+						bool desired = true;
+
+						if (m_resizing.compare_exchange_strong(expected, desired))
+						{
+							Resize(false);
+						}
+					}
 				}
 
 				return op.GetResponse();
