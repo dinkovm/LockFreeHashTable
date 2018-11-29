@@ -134,6 +134,127 @@ All changes performed by inserts and removes will be performed only on the head 
 
 The main synchronization techniques used in this algorithm is the use of atomic variables and the \textit{compare\_exchange\_strong} method. The atomic variables ensure that every read to these variables will be synchronized so that every thread sees the same value at the same time. The \textit{compare\_exchange\_strong} method allows us to ensure only one thread will update the head node or its buckets at a time, protecting us from values getting incorrectly overwritten or certain calls returning invalid responses. However, the key synchronization technique in this algorithm is the \textit{Freeze} method. The \textit{ok} bit getting set to false stops every thread from editing the data of that HNode until the resize is complete. While this does interrupt progress for a time, this ensures that no data is lost while we switch the \textit{m\_head} variable to a new HNode. If \textit{Freeze} were not called, every insert and remove performed after the first line of \textit{Resize}, where we atomically load the current value of the head, would be lost.
 
+\subsection{Transactional Implementation Using STM}
+
+Software Transactional Memory (STM) libraries allow atomicity to be implemented in software for a set of operations, known as a transaction. Each transaction must be entirely executed or not at all. Such behavior requires rewinding functionality that allows all the progress made by a transaction up to a certain point to be undone if another transaction has overwritten data shared between the two transactions. Rewinding a transaction can introduce additional overhead that is not present within other methodologies. Nevertheless, if a transaction is being rewound, it is due to another transaction making progress.
+
+\subsubsection{Sequential Hash Table}
+
+STM allows for a sequential implementation of a data structure to be made concurrent by defining its operations as transactions. In fact, the implementation must be sequential because the STL atomic operations fail to compile if they are defined within a GCC STM transaction. This section covers the implementation of the sequential hash table, which mimics the lock-free version but without the thread-safety functionality.
+
+Two different implementations for the hash table bins are explored. One implementation (Sequential::Set class) utilizes a binary search tree for its quick logarithmic-time search functionality. The other implementation utilizes a linked-list (Sequential::List) for its ability to be easily split into two lists or combined with another list into a single one. The benefit of using the List class for the bins is only apparent if the hash table supports proper resizing hierarchy. Without proper resizing, the bins may grow too large and in which case the linear search time of the List make it inferior to the Set.
+
+In addition to the traditional Insert, Remove, and Contains operations, the Set and List classes also include a Union and IntersectRemainder operations. Just like in the lock-free hash table, they are used when resizing the number of bins. Union combines two bins together while IntersectRemainder splits a bin into two based on the remainder value when dividing each element. These operations are simplified in the List implementation because:
+
+\begin{itemize}
+	\item An existing list can be recycled
+	\begin{itemize}
+		\item During a Union, the elements of the shorter List are inserted into the longer list.
+	\end{itemize}
+	\item Since both Lists are always sorted, each of these operations require a single traversal through each List resulting in an O(m+n) complexity.
+	\begin{itemize}
+		\item On the other hand, the time complexity of equivalent calls in Set is O(m * (n * log(n))) since each the tree has to be re-traversed for each Insert.
+	\end{itemize}
+\end{itemize}
+
+A set of verification tests are included in Tests.h that check the correctness of the Set and List classes. This code can be triggered by running the SequentialHashTable executable with an invalid set of parameters.
+
+The InsRem-50-64K data set is used to compare the different variants of the Sequential::HashTable since it is the most stressful. The single-threaded results are shown below, which confirm the differences between the Set and List implementations.
+
+\begin{itemize}
+	\item Sequential::Set is used for bin implementation and resizing is DISABLED.
+	\begin{itemize}
+    		\item 195ms
+	\end{itemize}
+	\item Sequential::Set is used for bin implementation and resizing is ENABLED.
+	\begin{itemize}
+		\item 118ms
+	\end{itemize}
+	\item Sequential::List is used for bin implementation and resizing is DISABLED.
+	\begin{itemize}
+		\item 6494ms
+	\end{itemize}
+	\item Sequential::List is used for bin implementation and resizing is ENABLED.
+	\begin{itemize}
+		\item 100ms
+	\end{itemize}
+\end{itemize}
+
+From here on, Sequential::List is used with resizing enabled. Various resize hierarchies are explored in this implementation, as for the lock-free hash table. Resizing based on the cumulative number of entries in the hash table again proves to be more efficient than resizing based on the size of individual bins. Resizing based on individual bins can lead to the number of bins constantly fluctuating if one bin has a lot of entries and another bin has very few. The lower threshold was chosen to be equal to numBins, since the optimal upper threshold showed to be 4 * numBins. Having thresholds that are > 2 times apart eliminates the possibility of resizing twice in two consecutive operations.
+
+\begin{itemize}
+	\item Resizing based on bin size. This can be enabled by changing the “\#if 0” occurrences in Sequential::HashTable to “\#if 1”
+	\begin{itemize}
+    		\item 170ms
+	\end{itemize}
+	\item Resizing based on cumulative number of entries in hash table. Upper threshold is set to 2 * numBins. Lower threshold is set to numBins.
+	\begin{itemize}
+		\item 123ms
+	\end{itemize}
+	\item Resizing based on cumulative number of entries in hash table. Upper threshold is set to 4 * numBins. Lower threshold is set to numBins.
+	\begin{itemize}
+		\item 100ms
+	\end{itemize}
+	\item Resizing based on cumulative number of entries in hash table. Upper threshold is set to 8 * numBins. Lower threshold is set to numBins.
+	\begin{itemize}
+		\item 109ms
+	\end{itemize}
+\end{itemize}
+
+\subsubsection{One Operation Per Transaction}
+
+The GCC transactional memory library is used in this implementation instead of RSTM because GCC is more commonly used and thus more likely to be streamlined. Also, the GCC transactions are implemented at the compiler level and are thus likely to be more efficient. Initially, each Sequential::HashTable operation is wrapped in its own transaction using the \_\_transaction\_atomic compiler directive. This compiler directive does not allow the compiler to insert locks, unlike the \_\_transaction\_relaxed directive [4]. SuperMalloc is used in this implementation as well in order to provide thread-safe memory allocations and deallocations. Introducing SuperMalloc did not create a noticeable change in performance.
+
+The table below shows the results of having a single operation per each atomic transaction. The runtime of the single threaded test cases have likely increased due to the overhead of preparing and submitting the transactions. The runtime becomes progressively worse with each additional thread since there are various possibilities for collisions throughout every function. Contains is the only exception, hence why it shows the best performance.
+
+\bigskip
+\includegraphics[width=0.5\linewidth]{Table1.png}
+\includegraphics[width=0.5\linewidth]{Graph1.png}
+
+\subsubsection{Multiple Operations Per Transaction}
+
+Packing multiple operations within a transaction proves to be more efficient for this kind of hash table. Having less transactions overall leads to less overhead dedicated to handling and submitting the transactions. This performance gain is directly reflected in the single-threaded case. However, having longer transactions leads to longer rewind procedures. This is likely why the rate of change drastically increases beyond 8 threads in the charts below, when collisions become much more likely.
+
+The graph below shows the results from having two operations per transaction. This is significantly more performant than having a single operation per thread, since the gain of having to do bookkeeping for less transactions outweighs the loss of the transactions being longer. With more threads, this case is likely to become less performant than having a single operation per transaction.
+
+\bigskip
+\includegraphics[width=0.5\linewidth]{Table2.png}
+\includegraphics[width=0.5\linewidth]{Graph2.png}
+
+The graph below shows the results from having four operations per transaction. It is more efficient than the either of two previous cases at lower number of threads. However, at higher number of threads it becomes no better than having two operations per transaction.
+
+\bigskip
+\includegraphics[width=0.5\linewidth]{Table3.png}
+\includegraphics[width=0.5\linewidth]{Graph3.png}
+
+\subsubsection{Improvement Attempts}
+
+This section covers several attempts to improve upon the STM implementation of the hash table. The only one that proves to be effective is to use coarse-grained locks instead of transactions for this kind of data structure.
+
+\subsubsection{Relaxed Transactions}
+
+Having relaxed transaction instead of atomic ones allows GCC to determine if using locks for some cases can be more efficient than atomicity. Atomicity can become too convoluted to implement in some cases [4]. The data below show the results of using relaxed transactions for the case where a transaction includes only a single operation. It seems no different from the case where the transactions are strictly atomic. The results from having relaxed transactions for the cases where a transaction encompasses multiple operations are also like the ones with strictly atomic transactions.
+
+\bigskip
+\includegraphics[width=0.5\linewidth]{Table4.png}
+\includegraphics[width=0.5\linewidth]{Graph4.png}
+
+\subsubsection{Replacing Transactions with Locks}
+
+Using locks (via std::mutex) instead of transactions showed approximately 20\% higher performance. Mutexes synchronize the operations, but collisions are eliminated and thus rewinds are no longer necessary. The data below shows the results from wrapping each operation in a mutex. If multiple operations are wrapped, then the performance is likely to be even better since there will be less contention points.
+
+\bigskip
+\includegraphics[width=0.5\linewidth]{Table5.png}
+\includegraphics[width=0.5\linewidth]{Graph5.png}
+
+\subsubsection{Offsetting the Transactions}
+
+The synchronize keyword in GCC allows a block of code to always executed sequentially. Under the hood, this is likely implemented using locks and requires that the transactions be relaxed. Wrapping various points of the code to offset the transactions and reduce the number of collisions leads to an increased overall execution time. The collisions likely still occur, and additional overhead is introduced by serializing parts of the code.
+
+\subsubsection{Comparison to Lock-Free Implementation}
+
+The STM implementation of the Hash Table does not scale well with additional threads, in contrast to the lock-free implementation. The two implementations have comparable performance only when using two threads are being executed. However, the STM implementation is significantly simpler to apply to a sequential data-structure.
+
 \section{Performance Evaluation}
 
 In this section we will compare the performance of our implementation of the algorithm versus the official algorithm provided by Liu et. al in [1]. We also will compare the performance of our different heuristic policies. Finally, we measure the performance differences between our initial implementation in a concurrent data structure and our final implementation where we converted it to a transactional data structure.
