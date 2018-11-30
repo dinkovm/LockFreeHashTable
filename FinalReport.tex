@@ -174,17 +174,17 @@ The original paper suggests to grow the number of bins when the bin being access
 
 We explored a slight variation of the policy suggested by the authors. In our policy, downsizing is based on the size of the current bin being accessed, instead of a random set of bins. The data below shows the observed execution times when using this heuristic.
 
-
-<<<<<< Lock-Free (Bin-Based Resizing) >>>>>>
-
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableA.png}
+\includegraphics[width=0.5\linewidth]{GraphA.png}
 
 Reoccurring operation arguments are less likely in the datasets that have an argument range up to 64K. For such cases, the Insert and Remove operations are more likely to succeed and check the heuristic policy. The long execution times for these data sets are due to the resize method being called too often. Consecutive resize calls are being made because the size of the bins are not uniform.
 
 We came up with an alternative heuristic that is agnostic to how uniform the sizes of the different bins are. This heuristic tracks all of the values in the hash table as a whole, instead of the size of the individual bins. This heuristic also introduces dynamic thresholds that do not require user input. The lower threshold is always equal to the number of bins in the hash table. This denotes that a single entry exists in each bin on average. The upper threshold is a multiple greater than two of the number of bins. Having a multiple greater than two is critical in order to avoid resizing in two consecutive operations. Various values for the multiples are profiled in the data included in the Appendix section. The data from the optimal multiple for our data set is shown below, which proved to be 64.
 
-
-<<<<<<< Lock-Free (Global Resizing 64) >>>>>>>
-
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableF.png}
+\includegraphics[width=0.5\linewidth]{GraphF.png}
 
 \section{Transactional Implementation Using STM}
 
@@ -315,6 +315,32 @@ Re-implementing Liu et. al's data structure was not without its challenges. Conv
 
 This data structure provides a lot of new advantages to existing alternatives. The biggest its dynamic property; being able to grow and shrink while previous hash table implementations were only able to grow. In an environment with limited memory this data structure is far optimal to its alternatives due to this key feature. It also allows keys to be moved among buckets during a resize operation which previous data structures have not done. Doing this during the resize allows this implementation to avoid sacrificing throughput or progress. Also, the buckets are unbounded and no assumption is made about the size of memory, which allows this data structure to be more flexible in its applications onto larger datasets. While the inner mechanisms of this data structure can be complicated, as there are four encapsulating layers of objects; once it has been successfully implemented the advantages of it far outweigh this.
 
+\section{Appendix}
+
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableB.png}
+\includegraphics[width=0.5\linewidth]{GraphB.png}
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableC.png}
+\includegraphics[width=0.5\linewidth]{GraphC.png}
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableD.png}
+\includegraphics[width=0.5\linewidth]{GraphD.png}
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableE.png}
+\includegraphics[width=0.5\linewidth]{GraphE.png}
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableF.png}
+\includegraphics[width=0.5\linewidth]{GraphF.png}
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableG.png}
+\includegraphics[width=0.5\linewidth]{GraphG.png}
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableH.png}
+\includegraphics[width=0.5\linewidth]{GraphH.png}
+\bigskip
+\includegraphics[width=0.5\linewidth]{TableI.png}
+\includegraphics[width=0.5\linewidth]{GraphI.png}
 
 
 \nocite{*}
