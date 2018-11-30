@@ -73,13 +73,13 @@ The idea of freezing the hash set relies on a resizing operation, dictated by a 
 
 D.1.3 [\textbf{Programming Techniques}]: Concurrent Programming -- \textit{Parallel Programming;} E.2 [\textbf{Data Storage Representations}]: Hash-table Representation
 
-\section{Implementation & Architecture}
+\section{Implementation \& Architecture}
 
 \subsection{Freezable Set}
 
 The Freezable Set class (FSet) serves as a wrapper layer around the Set class. The FSet object contains \textit{set} and \textit{ok} variables and defines the FSetOp struct. The \textit{ok} variable is a single bit representing whether or not the FSet is frozen. If \textit{ok} is set to false, then \textit{set} becomes immutable and no threads can add or remove an element. Threads can still check if an element is in the frozen set and retrieve it; which is important for the \textit{InitBucket} method of our HashTable, which will repopulate the current head node's buckets with the data from the previous head node.
 
-The \textit{HasMember} method solely exposes the \textit{Contains} call of the underlying \textoit{Set} class. The \textit{Invoke} method triggers either an add or remove operation. This method checks if this operation has not already been completed and if it is a valid operation. After those conditions are met, either \textit{Set::Insert()} or \textit{Set::Remove()} is called dependind on the \textit{op.type} variable; which is set to an enum of either \textbf{INSERT} or \textbf{REMOVE}. The \textit{Freeze} method is simple, yet crucial to the functionality of making the hash table lock free. We made no changes to the Freeze method provided by [1].
+The \textit{HasMember} method solely exposes the \textit{Contains} call of the underlying \textit{Set} class. The \textit{Invoke} method triggers either an add or remove operation. This method checks if this operation has not already been completed and if it is a valid operation. After those conditions are met, either \textit{Set::Insert()} or \textit{Set::Remove()} is called dependind on the \textit{op.type} variable; which is set to an enum of either \textbf{INSERT} or \textbf{REMOVE}. The \textit{Freeze} method is simple, yet crucial to the functionality of making the hash table lock free. We made no changes to the Freeze method provided by [1].
 
 A size variable is added to the FSet class as an aide for one of the explored hash table resizing heuristic policies. This variable is only an estimate of the size of the set since it is modified past the linearization point of an \textit{Insert} or \textit{Remove} operation. Implementing a more accurate size query requires use of descriptor objects within the Set class. Descriptors would lead to unneccessary overhead since such size accuracy is not necessary solely for the purpose of determining when to resize.
 
@@ -107,11 +107,11 @@ As most hash tables, this one's public interface supports three methods: \textit
 The first HNode must always be present and is accessed via a head HNode member pointer. The second HNode can be accessed through the \textit{pred} pointer of the first HNode and is non-existant if that pointer equals NULL. The HNode pointers are atomic variables since they can be accessed by multiple threads.
 The first bin can have un-initialized (NULL) bins. The second HNode is used to initialize the bins of the first HNode. All bins of the second HNode MUST be initialized and cannot be NULL. A third HNode is not present to initialize the bins of the second HNode.
 
-Set::Resize is an internal call that can be triggerred by an Insert or Remove based on a heuristic policy. The heuristic policy choise can significantly impact performance. Set::Resize should'nt be called too often since the Set::Resize call is expensive. However, Set::Resize should be called often enough so that the bin sizes do not become too large, which would result in expensive traversals. In an effort to avoid the overhead of two threads attempting to resize simultaneously, the atomic bool flag m_resizing is introduced, which was not included in [1]. Resize can only be called if a CAS call successfully flips the flag from false to true. Once resizing procedure is complete, m_resizing is set back to false via an atomic write.
+Set::Resize is an internal call that can be triggerred by an Insert or Remove based on a heuristic policy. The heuristic policy choise can significantly impact performance. Set::Resize should'nt be called too often since the Set::Resize call is expensive. However, Set::Resize should be called often enough so that the bin sizes do not become too large, which would result in expensive traversals. In an effort to avoid the overhead of two threads attempting to resize simultaneously, the atomic bool flag m\_resizing is introduced, which was not included in [1]. Resize can only be called if a CAS call successfully flips the flag from false to true. Once resizing procedure is complete, m\_resizing is set back to false via an atomic write.
 
 The implementation of Set::Resize initializes all of the bins in the first HNode that have not already been initialized. A new HNode is created with a number of bins equal to double or half of the bins in the first HNode. The current first HNode is set as the pred pointer of the newly created HNode in preparation to make it a second HNode and the newly created HNode is set as the first HNode using a CAS call. If the CAS fails, it is only due to another Set::Resize call (triggerred by another Insert or Remove) successfully executing its resize. Since the HashTable has been resized even when the CAS fails, the CAS call does not need to be reattempted. This CAS call represents the linearization point of the resizing functionality of the HashTable. No bins are initialized in the first HNode immediately following a resize. Instead, the work for initializing the bins in the first HNode is distributed amongst the future calls that access those bins.
 
-The Set::InitBucket method is used to populate a NULL bin in the first HNode. During this call, the NULL bin is populated with data from the second HNode, which is always initialized. The second HNode can either have half or double the size of the first HNode, denoting whether the last Set::Resize call grew or shrunk the hash table. If the table has been shrunk, then bin N in the first HNode inherits the values of bin N and N + numBins1 (where numBins refers to the number of bins in the first HNode). The proccess is slightly more convoluted if the table has grown. For such cases, bin N in the first HNode is populated with the entries in bin N % numBins2 that have a remainder of N when divided by numBins1. The bins in the second HNode are always frozen prior to being accessed. The Set::InitBucket method is linearizable since the bin pointers in the HNode object are atomic and a CAS call is used to replace a NULL bin with a newly created one. That CAS also represents the linearization point of the initialization of a bin. The call can only fail if another call has came through and initialized that same bin, thus making it unnecessary to retry again.
+The Set::InitBucket method is used to populate a NULL bin in the first HNode. During this call, the NULL bin is populated with data from the second HNode, which is always initialized. The second HNode can either have half or double the size of the first HNode, denoting whether the last Set::Resize call grew or shrunk the hash table. If the table has been shrunk, then bin N in the first HNode inherits the values of bin N and N + numBins1 (where numBins refers to the number of bins in the first HNode). The proccess is slightly more convoluted if the table has grown. For such cases, bin N in the first HNode is populated with the entries in bin N \% numBins2 that have a remainder of N when divided by numBins1. The bins in the second HNode are always frozen prior to being accessed. The Set::InitBucket method is linearizable since the bin pointers in the HNode object are atomic and a CAS call is used to replace a NULL bin with a newly created one. That CAS also represents the linearization point of the initialization of a bin. The call can only fail if another call has came through and initialized that same bin, thus making it unnecessary to retry again.
 
 The Set::Apply method represents a private helper function for processing an Insert or Remove. Apply can only be called on a bin in the first HNode. The designated bin is initialized if it happens to be NULL. An Insert or Remove should never fail due to a bin being frozen because only bins in the second HNode can be frozen. Each Insert or Remove call linearizes once it reaches the previously discussed linearization points within the underlying Set class. A size member (similar to the one in FSet) is implemented in the HashTable class, which is not part of the pseudocode in [1]. This variable is atomically incremeneted and decremented upon successful Insert and Remove operations. Again, this is only an estimate of the total number of nodes in the table and solely used as part of a resizing heuristic policy.
 
@@ -141,27 +141,27 @@ Four data sets of 2000000 operations are used during the profiling runs. A large
 \begin{itemize}
 	\item InsRem-50-64K.dat
 	\begin{itemize}
-		\item Proportions: 50% Inserts, 50% Removes, 0% Contains
+		\item Proportions: 50\% Inserts, 50\% Removes, 0\% Contains
 		\item Argument Range: 0-64,000 
-           \item First 25% of operations are Inserts in order to pre-load the data structure 
+           \item First 25\% of operations are Inserts in order to pre-load the data structure 
 	\end{itemize}
 	\item Contains-90-64K.dat
 	\begin{itemize}
-		\item Proportions: 9% Inserts, 1% Removes, 90% Contains
+		\item Proportions: 9\% Inserts, 1\% Removes, 90\% Contains
 		\item Argument Range: 0-64,000 
-           \item First 5% of operations are Inserts in order to pre-load the data structure 
+           \item First 5\% of operations are Inserts in order to pre-load the data structure 
 	\end{itemize}
 	\item InsRem-50-256.dat
 	\begin{itemize}
-		\item Proportions: 50% Inserts, 50% Removes, 0% Contains
+		\item Proportions: 50\% Inserts, 50\% Removes, 0\% Contains
 		\item Argument Range: 0-256
-           \item First 25% of operations are Inserts in order to pre-load the data structure  
+           \item First 25\% of operations are Inserts in order to pre-load the data structure  
 	\end{itemize}
 	\item Contains-50-256.dat
 	\begin{itemize}
-		\item Proportions: 9% Inserts, 1% Removes, 90% Contains
+		\item Proportions: 9\% Inserts, 1\% Removes, 90\% Contains
 		\item Argument Range: 0-256
-           \item First 5% of operations are Inserts in order to pre-load the data structure  
+           \item First 5\% of operations are Inserts in order to pre-load the data structure  
 	\end{itemize}
 \end{itemize}
 
